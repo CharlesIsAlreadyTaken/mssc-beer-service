@@ -1,11 +1,11 @@
 version: '3.8'
 services:
-  db:
-    image: mysql
-    ports:
-      - 3306:3306
-    environment:
-      MYSQL_ROOT_PASSWORD: admin
+#  db:
+#    image: mysql
+#    ports:
+#      - 3306:3306
+#    environment:
+#      MYSQL_ROOT_PASSWORD: admin
   jms:
     image: vromero/activemq-artemis
     ports:
@@ -29,23 +29,25 @@ services:
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://netflix:eureka@eureka:8761/eureka/
       EUREKA_INSTANCE_PREFER_IP_ADDRESS: 'true'
   inventory-service:
-    image: charlesisalreadytaken/mssc-beer-inventory-service
+    image: charlesisalreadytaken/mssc-beer-inventory-service:latest
     ports:
       - 8082:8082
     depends_on:
       - eureka
       - config
       - jms
-      - db
     environment:
+      SPRING_APPLICATION_NAME: beer-inventory-service
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://netflix:eureka@eureka:8761/eureka/
       EUREKA_INSTANCE_PREFER_IP_ADDRESS: 'true'
       SPRING_PROFILES_ACTIVE: local-discovery, localmysql
-      SPRING_ZIPKIN_BASEURL: http://zipkin
+      SPRING_ZIPKIN_BASE-URL: http://zipkin:9411/
+      SPRING_ZIPKIN_ENABLED: 'true'
       SPRING_ARTEMIS_HOST: jms
-      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/beerinventoryservice?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC
+      SPRING_DATASOURCE_URL: jdbc:mysql://host.docker.internal:3306/beerinventoryservice?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC
+    restart: on-failure
   inventory-failover-service:
-    image: charlesisalreadytaken/mssc-beer-inventory-failover-service
+    image: charlesisalreadytaken/mssc-beer-inventory-failover-service:latest
     ports:
       - 8083:8083
     depends_on:
@@ -55,42 +57,45 @@ services:
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://netflix:eureka@eureka:8761/eureka/
       EUREKA_INSTANCE_PREFER_IP_ADDRESS: 'true'
       SPRING_PROFILES_ACTIVE: local-discovery, local
-      SPRING_ZIPKIN_BASEURL: http://zipkin
+      SPRING_ZIPKIN_BASE-URL: http://zipkin:9411/
+      SPRING_ZIPKIN_ENABLED: 'true'
   beer-service:
-    image: charlesisalreadytaken/mssc-beer-service
+    image: charlesisalreadytaken/mssc-beer-service:latest
     ports:
       - 8080:8080
     depends_on:
       - eureka
       - config
       - jms
-      - db
       - inventory-service
     environment:
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://netflix:eureka@eureka:8761/eureka/
       EUREKA_INSTANCE_PREFER_IP_ADDRESS: 'true'
-      SPRING_PROFILES_ACTIVE: local-discovery, local
-      SPRING_ZIPKIN_BASEURL: http://zipkin
+      SPRING_PROFILES_ACTIVE: local-discovery, localmysql
+      SPRING_ZIPKIN_BASE-URL: http://zipkin:9411/
+      SPRING_ZIPKIN_ENABLED: 'true'
       SPRING_ARTEMIS_HOST: jms
-      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/beerservice?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC
+      SPRING_DATASOURCE_URL: jdbc:mysql://host.docker.internal:3306/beerservice?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC
+    restart: on-failure
   order-service:
-    image: charlesisalreadytaken/mssc-beer-order-service
+    image: charlesisalreadytaken/mssc-beer-order-service:latest
     ports:
       - 8081:8081
     depends_on:
       - eureka
       - config
       - jms
-      - db
       - beer-service
     environment:
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://netflix:eureka@eureka:8761/eureka/
       EUREKA_INSTANCE_PREFER_IP_ADDRESS: 'true'
-      SPRING_PROFILES_ACTIVE: local-discovery, local
-      SPRING_ZIPKIN_BASEURL: http://zipkin
+      SPRING_PROFILES_ACTIVE: local-discovery, localmysql
+      SPRING_ZIPKIN_BASE-URL: http://zipkin:9411/
+      SPRING_ZIPKIN_ENABLED: 'true'
       SPRING_ARTEMIS_HOST: jms
-      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/beerorderservice?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC
+      SPRING_DATASOURCE_URL: jdbc:mysql://host.docker.internal:3306/beerorderservice?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC
       SFG_BREWERY_BEER-SERVICE-HOST: http://beer-service:8080
+    restart: on-failure
   gateway:
     image: charlesisalreadytaken/mssc-brewery-gateway
     ports:
@@ -99,7 +104,6 @@ services:
       - eureka
       - config
       - jms
-      - db
       - beer-service
       - inventory-service
       - inventory-failover-service
@@ -108,4 +112,7 @@ services:
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://netflix:eureka@eureka:8761/eureka/
       EUREKA_INSTANCE_PREFER_IP_ADDRESS: 'true'
       SPRING_PROFILES_ACTIVE: local-discovery
+      SPRING_ZIPKIN_BASE-URL: http://zipkin:9411/
+      SPRING_ZIPKIN_ENABLED: 'true'
+    restart: on-failure
 
